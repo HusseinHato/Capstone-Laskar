@@ -1,6 +1,6 @@
 {
-  "created_at": "2025-06-11T14:52:21.404920",
-  "num_books": 68,
+  "created_at": "2025-06-11T18:42:28.831436",
+  "num_books": 125,
   "vocab_size": 5000,
   "method": "TF-IDF + Cosine Similarity"
 }
