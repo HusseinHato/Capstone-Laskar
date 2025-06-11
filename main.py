@@ -1,222 +1,242 @@
-import pandas as pd
-import numpy as np
-import json
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 import pickle
-from sklearn.feature_extraction.text import TfidfVectorizer
+import json
+import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 import re
+import os
 from datetime import datetime
 
-class BookRecommendationModel:
-    def __init__(self):
-        self.vectorizer = TfidfVectorizer(
-            max_features=5000,
-            stop_words='english',
-            ngram_range=(1, 2),
-            min_df=1,
-            max_df=0.8,
-            lowercase=True
-        )
+app = Flask(__name__)
+CORS(app)  # Enable CORS for web app
+
+class BookRecommendationAPI:
+    def __init__(self, model_dir='book_recommendation_model'):
+        self.model_dir = model_dir
+        self.vectorizer = None
         self.tfidf_matrix = None
         self.books_data = None
-        self.model_info = {
-            'created_at': None,
-            'num_books': 0,
-            'vocab_size': 0,
-            'method': 'TF-IDF + Cosine Similarity'
-        }
+        self.model_info = None
+        self.is_loaded = False
+        
+    def load_model(self):
+        """Load pre-trained model"""
+        try:
+            print(f"Loading model from {self.model_dir}...")
+            
+            # Load TF-IDF vectorizer
+            with open(f'{self.model_dir}/tfidf_vectorizer.pkl', 'rb') as f:
+                self.vectorizer = pickle.load(f)
+            
+            # Load TF-IDF matrix
+            with open(f'{self.model_dir}/tfidf_matrix.pkl', 'rb') as f:
+                self.tfidf_matrix = pickle.load(f)
+            
+            # Load books data
+            with open(f'{self.model_dir}/books_data.json', 'r', encoding='utf-8') as f:
+                self.books_data = json.load(f)
+            
+            # Load model info
+            with open(f'{self.model_dir}/model_info.json', 'r', encoding='utf-8') as f:
+                self.model_info = json.load(f)
+            
+            self.is_loaded = True
+            print(f"✅ Model loaded successfully!")
+            print(f"📊 Books: {len(self.books_data)}")
+            print(f"📝 Vocabulary size: {self.model_info['vocab_size']}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error loading model: {e}")
+            return False
     
     def preprocess_text(self, text):
-        """Preprocessing teks untuk bahasa Indonesia dan Inggris"""
-        if pd.isna(text):
+        """Preprocess text (same as training)"""
+        if not text:
             return ""
         
-        # Convert to lowercase
         text = str(text).lower()
-        
-        # Remove punctuation and special characters
         text = re.sub(r'[^\w\s]', ' ', text)
-        
-        # Remove extra whitespace
         text = ' '.join(text.split())
         
         return text
     
-    def combine_features(self, row):
-        """Menggabungkan semua fitur teks menjadi satu"""
-        features = []
+    def get_recommendations(self, query, top_k=10, min_similarity=0.01):
+        """Get book recommendations"""
+        if not self.is_loaded:
+            return {"error": "Model not loaded"}
         
-        # Bobot untuk setiap kolom (title lebih penting)
-        title = self.preprocess_text(row.get('Judul_Buku', ''))
-        author = self.preprocess_text(row.get('Author', ''))
-        description = self.preprocess_text(row.get('Deskripsi', ''))
-        publisher = self.preprocess_text(row.get('Penerbit', ''))
-        
-        # Berikan bobot lebih pada judul dan deskripsi
-        combined = f"{title} {title} {description} {author} {publisher}"
-        
-        return combined
-    
-    def train(self, excel_file_path):
-        """Training model dari file Excel"""
-        print("📚 Memulai training model rekomendasi buku...")
-        
-        # Load data
-        print("📖 Membaca file Excel...")
         try:
-            df = pd.read_excel(excel_file_path)
-            print(f"✅ Berhasil membaca {len(df)} buku")
+            # Preprocess query
+            processed_query = self.preprocess_text(query)
+            
+            if not processed_query:
+                return {"error": "Invalid query"}
+            
+            # Transform query to TF-IDF vector
+            query_vector = self.vectorizer.transform([processed_query])
+            
+            # Calculate cosine similarity
+            similarities = cosine_similarity(query_vector, self.tfidf_matrix).flatten()
+            
+            # Get top recommendations
+            top_indices = similarities.argsort()[-top_k*2:][::-1]  # Get more to filter
+            
+            recommendations = []
+            for idx in top_indices:
+                if similarities[idx] >= min_similarity:
+                    recommendations.append({
+                        'book': self.books_data[idx],
+                        'similarity': float(similarities[idx]),
+                        'similarity_percent': round(float(similarities[idx]) * 100, 2)
+                    })
+            
+            # Limit to top_k
+            recommendations = recommendations[:top_k]
+            
+            return {
+                "success": True,
+                "query": query,
+                "total_results": len(recommendations),
+                "recommendations": recommendations,
+                "model_info": self.model_info
+            }
+            
         except Exception as e:
-            print(f"❌ Error membaca file: {e}")
-            return False
-        
-        # Validasi kolom
-        required_columns = ['Author', 'Judul_Buku', 'Deskripsi', 'Penerbit']
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        
-        if missing_columns:
-            print(f"❌ Kolom yang hilang: {missing_columns}")
-            return False
-        
-        # Preprocess data
-        print("🔄 Preprocessing data...")
-        df['combined_features'] = df.apply(self.combine_features, axis=1)
-        
-        # Remove empty rows
-        df = df[df['combined_features'].str.strip() != '']
-        
-        # Fit TF-IDF
-        print("🧠 Training TF-IDF vectorizer...")
-        self.tfidf_matrix = self.vectorizer.fit_transform(df['combined_features'])
-        
-        # Store data
-        self.books_data = df.to_dict('records')
-        
-        # Update model info
-        self.model_info.update({
-            'created_at': datetime.now().isoformat(),
-            'num_books': len(df),
-            'vocab_size': len(self.vectorizer.vocabulary_),
-            'method': 'TF-IDF + Cosine Similarity'
-        })
-        
-        print(f"✅ Training selesai!")
-        print(f"📊 Jumlah buku: {self.model_info['num_books']}")
-        print(f"📝 Ukuran vocabulary: {self.model_info['vocab_size']}")
-        
-        return True
-    
-    def save_model(self, model_dir='model'):
-        """Simpan model dan data ke file"""
-        import os
-        os.makedirs(model_dir, exist_ok=True)
-        
-        print("💾 Menyimpan model...")
-        
-        # Save TF-IDF vectorizer
-        with open(f'{model_dir}/tfidf_vectorizer.pkl', 'wb') as f:
-            pickle.dump(self.vectorizer, f)
-        
-        # Save TF-IDF matrix
-        with open(f'{model_dir}/tfidf_matrix.pkl', 'wb') as f:
-            pickle.dump(self.tfidf_matrix, f)
-        
-        # Save books data
-        with open(f'{model_dir}/books_data.json', 'w', encoding='utf-8') as f:
-            json.dump(self.books_data, f, ensure_ascii=False, indent=2)
-        
-        # Save model info
-        with open(f'{model_dir}/model_info.json', 'w', encoding='utf-8') as f:
-            json.dump(self.model_info, f, ensure_ascii=False, indent=2)
-        
-        print(f"✅ Model disimpan di folder: {model_dir}")
-        print("📁 File yang dibuat:")
-        print("   - tfidf_vectorizer.pkl")
-        print("   - tfidf_matrix.pkl") 
-        print("   - books_data.json")
-        print("   - model_info.json")
-    
-    def load_model(self, model_dir='model'):
-        """Load model dari file"""
-        print("📂 Loading model...")
-        
-        # Load TF-IDF vectorizer
-        with open(f'{model_dir}/tfidf_vectorizer.pkl', 'rb') as f:
-            self.vectorizer = pickle.load(f)
-        
-        # Load TF-IDF matrix
-        with open(f'{model_dir}/tfidf_matrix.pkl', 'rb') as f:
-            self.tfidf_matrix = pickle.load(f)
-        
-        # Load books data
-        with open(f'{model_dir}/books_data.json', 'r', encoding='utf-8') as f:
-            self.books_data = json.load(f)
-        
-        # Load model info
-        with open(f'{model_dir}/model_info.json', 'r', encoding='utf-8') as f:
-            self.model_info = json.load(f)
-        
-        print("✅ Model berhasil di-load!")
-        print(f"📊 Jumlah buku: {self.model_info['num_books']}")
-        print(f"📝 Ukuran vocabulary: {self.model_info['vocab_size']}")
-        print(f"📅 Dibuat pada: {self.model_info['created_at']}")
-        
-        return True
-    
-    def get_recommendations(self, query, top_k=10):
-        """Mendapatkan rekomendasi berdasarkan query"""
-        if self.tfidf_matrix is None:
-            return []
-        
-        # Preprocess query
-        processed_query = self.preprocess_text(query)
-        
-        # Transform query to TF-IDF vector
-        query_vector = self.vectorizer.transform([processed_query])
-        
-        # Calculate cosine similarity
-        similarities = cosine_similarity(query_vector, self.tfidf_matrix).flatten()
-        
-        # Get top recommendations
-        top_indices = similarities.argsort()[-top_k:][::-1]
-        
-        recommendations = []
-        for idx in top_indices:
-            if similarities[idx] > 0:  # Only include relevant results
-                recommendations.append({
-                    'book': self.books_data[idx],
-                    'similarity': float(similarities[idx]),
-                    'similarity_percent': round(similarities[idx] * 100, 2)
-                })
-        
-        return recommendations
+            return {"error": f"Search error: {str(e)}"}
 
-# Contoh penggunaan
-if __name__ == "__main__":
-    # Inisialisasi model
-    model = BookRecommendationModel()
+# Initialize API
+recommender = BookRecommendationAPI()
+
+@app.route('/')
+def home():
+    """API Info"""
+    return jsonify({
+        "service": "Book Recommendation API",
+        "version": "1.0",
+        "status": "ready" if recommender.is_loaded else "loading",
+        "endpoints": {
+            "/": "API info",
+            "/health": "Health check",
+            "/model-info": "Model information",
+            "/search": "Search recommendations (POST)",
+            "/search/<query>": "Search recommendations (GET)"
+        }
+    })
+
+@app.route('/health')
+def health():
+    """Health check endpoint"""
+    return jsonify({
+        "status": "healthy" if recommender.is_loaded else "loading",
+        "timestamp": datetime.now().isoformat(),
+        "model_loaded": recommender.is_loaded
+    })
+
+@app.route('/model-info')
+def model_info():
+    """Get model information"""
+    if not recommender.is_loaded:
+        return jsonify({"error": "Model not loaded"}), 503
     
-    # Path ke file Excel Anda
-    excel_file = "databuku.xlsx"  # Ganti dengan path file Anda
+    return jsonify({
+        "model_info": recommender.model_info,
+        "total_books": len(recommender.books_data),
+        "status": "ready"
+    })
+
+@app.route('/search', methods=['POST'])
+def search_post():
+    """Search recommendations via POST"""
+    if not recommender.is_loaded:
+        return jsonify({"error": "Model not loaded"}), 503
     
-    # Training
-    if model.train(excel_file):
-        # Simpan model
-        model.save_model("book_recommendation_model")
+    data = request.get_json()
+    if not data or 'query' not in data:
+        return jsonify({"error": "Missing 'query' parameter"}), 400
+    
+    query = data['query']
+    top_k = data.get('top_k', 10)
+    min_similarity = data.get('min_similarity', 0.01)
+    
+    result = recommender.get_recommendations(query, top_k, min_similarity)
+    
+    if "error" in result:
+        return jsonify(result), 400
+    
+    return jsonify(result)
+
+@app.route('/search/<query>')
+def search_get(query):
+    """Search recommendations via GET"""
+    if not recommender.is_loaded:
+        return jsonify({"error": "Model not loaded"}), 503
+    
+    top_k = request.args.get('top_k', 10, type=int)
+    min_similarity = request.args.get('min_similarity', 0.01, type=float)
+    
+    result = recommender.get_recommendations(query, top_k, min_similarity)
+    
+    if "error" in result:
+        return jsonify(result), 400
+    
+    return jsonify(result)
+
+@app.route('/books')
+def get_books():
+    """Get all books (paginated)"""
+    if not recommender.is_loaded:
+        return jsonify({"error": "Model not loaded"}), 503
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    start_idx = (page - 1) * per_page
+    end_idx = start_idx + per_page
+    
+    books_page = recommender.books_data[start_idx:end_idx]
+    
+    return jsonify({
+        "books": books_page,
+        "pagination": {
+            "page": page,
+            "per_page": per_page,
+            "total": len(recommender.books_data),
+            "pages": (len(recommender.books_data) + per_page - 1) // per_page
+        }
+    })
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"error": "Endpoint not found"}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"error": "Internal server error"}), 500
+
+if __name__ == '__main__':
+    # Load model on startup
+    print("🚀 Starting Book Recommendation API...")
+    
+    if not os.path.exists('book_recommendation_model'):
+        print("❌ Model directory 'book_recommendation_model' not found!")
+        print("💡 Please run the training script first to generate the model.")
+        exit(1)
+    
+    # Load model
+    if recommender.load_model():
+        print("✅ Model loaded successfully!")
+        print("🌐 Starting Flask server...")
         
-        # Test model (opsional)
-        print("\n🔍 Testing model...")
-        recommendations = model.get_recommendations("statistika", top_k=5)
-        
-        if recommendations:
-            print(f"Top 5 rekomendasi untuk 'statistika':")
-            for i, rec in enumerate(recommendations, 1):
-                book = rec['book']
-                print(f"{i}. {book['Judul_Buku']} - {book['Author']} ({rec['similarity_percent']:.1f}%)")
-        else:
-            print("Tidak ada rekomendasi ditemukan.")
-    
-    print("\n🎉 Proses selesai!")
-    print("📋 Langkah selanjutnya:")
-    print("1. Copy folder 'book_recommendation_model' ke direktori web")
-    print("2. Gunakan web app untuk inference")
+        # Run server
+        app.run(
+            host='0.0.0.0',
+            port=5000,
+            debug=False,
+            threaded=True
+        )
+    else:
+        print("❌ Failed to load model. Exiting...")
+        exit(1)
