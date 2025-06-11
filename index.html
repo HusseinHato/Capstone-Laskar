@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Recommendation System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .status-bar {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4757;
+        }
+
+        .status-dot.online {
+            background: #2ed573;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .search-panel {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .search-panel h2 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 1.5em;
+        }
+
+        .search-form {
+            margin-bottom: 25px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .input-group input, .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus, .input-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #ffa726 0%, #ff7043 100%);
+        }
+
+        .results-panel {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            min-height: 400px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e1e5e9;
+        }
+
+        .results-header h2 {
+            color: #333;
+            font-size: 1.5em;
+        }
+
+        .results-count {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .book-card {
+            background: #fff;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .book-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .book-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .book-title {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .book-author {
+            color: #666;
+            font-style: italic;
+        }
+
+        .book-publisher{
+            font-weight: bold;
+            color: #000
+        }
+
+        .similarity-score {
+            background: linear-gradient(135deg, #2ed573 0%, #17c0eb 100%);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .book-description {
+            color: #555;
+            line-height: 1.6;
+            margin-top: 10px;
+        }
+
+        .book-meta {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #777;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e1e5e9;
+            border-left: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ff4757;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .model-info {
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .info-card {
+            text-align: center;
+            padding: 15px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+        }
+
+        .info-card h4 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .info-card p {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 1.2em;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .search-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-bar {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Book Recommendation System</h1>
+            <p>Discover your next favorite book using AI-powered recommendations</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Checking connection...</span>
+            </div>
+            <div id="statusDetails"></div>
+        </div>
+
+        <div class="main-content">
+            <div class="search-panel">
+                <h2>🔍 Find Books</h2>
+                <form class="search-form" id="searchForm">
+                    <div class="input-group">
+                        <label for="searchQuery">What are you looking for?</label>
+                        <textarea 
+                            id="searchQuery" 
+                            placeholder="Enter book title, author, genre, or describe what you're interested in..."
+                            rows="3"
+                            required
+                        ></textarea>
+                    </div>
+                    
+                    <div class="search-options">
+                        <div class="input-group">
+                            <label for="topK">Number of results</label>
+                            <input type="number" id="topK" min="1" max="50" value="10">
+                        </div>
+                        <div class="input-group">
+                            <label for="minSimilarity">Minimum similarity</label>
+                            <input type="number" id="minSimilarity" min="0" max="1" step="0.01" value="0.01">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn" id="searchBtn">
+                        Search Books
+                    </button>
+                </form>
+                
+                <button type="button" class="btn btn-secondary" id="browseBtn">
+                    Browse All Books
+                </button>
+            </div>
+
+            <div class="results-panel">
+                <div class="results-header">
+                    <h2>📖 Results</h2>
+                    <div class="results-count" id="resultsCount" style="display: none;">0 books</div>
+                </div>
+                
+                <div id="resultsContainer">
+                    <div class="empty-state">
+                        <h3>Ready to search!</h3>
+                        <p>Enter your search query to find book recommendations</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="model-info" id="modelInfo" style="display: none;">
+            <div class="info-card">
+                <h4>Total Books</h4>
+                <p id="totalBooks">-</p>
+            </div>
+            <div class="info-card">
+                <h4>Vocabulary Size</h4>
+                <p id="vocabSize">-</p>
+            </div>
+            <div class="info-card">
+                <h4>Model Version</h4>
+                <p id="modelVersion">-</p>
+            </div>
+            <div class="info-card">
+                <h4>Last Updated</h4>
+                <p id="lastUpdated">-</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class BookRecommendationUI {
+            constructor() {
+                this.apiUrl = 'http://localhost:5000';
+                this.isLoading = false;
+                this.init();
+            }
+
+            init() {
+                this.bindEvents();
+                this.checkHealth();
+                this.loadModelInfo();
+            }
+
+            bindEvents() {
+                document.getElementById('searchForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.performSearch();
+                });
+
+                document.getElementById('browseBtn').addEventListener('click', () => {
+                    this.browseBooks();
+                });
+
+                // Auto-resize textarea
+                const textarea = document.getElementById('searchQuery');
+                textarea.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = this.scrollHeight + 'px';
+                });
+            }
+
+            async checkHealth() {
+                try {
+                    const response = await fetch(`${this.apiUrl}/health`);
+                    const data = await response.json();
+                    
+                    const statusDot = document.getElementById('statusDot');
+                    const statusText = document.getElementById('statusText');
+                    const statusDetails = document.getElementById('statusDetails');
+                    
+                    if (data.status === 'healthy') {
+                        statusDot.classList.add('online');
+                        statusText.textContent = 'API Online';
+                        statusDetails.textContent = `Connected • ${new Date(data.timestamp).toLocaleTimeString()}`;
+                    } else {
+                        statusText.textContent = 'API Loading';
+                        statusDetails.textContent = 'Model is loading, please wait...';
+                    }
+                } catch (error) {
+                    const statusText = document.getElementById('statusText');
+                    const statusDetails = document.getElementById('statusDetails');
+                    statusText.textContent = 'API Offline';
+                    statusDetails.textContent = 'Cannot connect to server';
+                }
+            }
+
+            async loadModelInfo() {
+                try {
+                    const response = await fetch(`${this.apiUrl}/model-info`);
+                    const data = await response.json();
+                    
+                    if (data.model_info) {
+                        document.getElementById('totalBooks').textContent = data.total_books.toLocaleString();
+                        document.getElementById('vocabSize').textContent = data.model_info.vocab_size.toLocaleString();
+                        document.getElementById('modelVersion').textContent = data.model_info.version || '1.0';
+                        document.getElementById('lastUpdated').textContent = new Date(data.model_info.created_at).toLocaleDateString();
+                        document.getElementById('modelInfo').style.display = 'block';
+                    }
+                } catch (error) {
+                    console.warn('Could not load model info:', error);
+                }
+            }
+
+            async performSearch() {
+                if (this.isLoading) return;
+
+                const query = document.getElementById('searchQuery').value.trim();
+                const topK = parseInt(document.getElementById('topK').value);
+                const minSimilarity = parseFloat(document.getElementById('minSimilarity').value);
+
+                if (!query) {
+                    this.showError('Please enter a search query');
+                    return;
+                }
+
+                this.setLoading(true);
+                this.showLoading();
+
+                try {
+                    const response = await fetch(`${this.apiUrl}/search`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            query,
+                            top_k: topK,
+                            min_similarity: minSimilarity
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.displayResults(data);
+                    } else {
+                        this.showError(data.error || 'Search failed');
+                    }
+                } catch (error) {
+                    this.showError('Network error: Could not connect to server');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            async browseBooks(page = 1) {
+                if (this.isLoading) return;
+
+                this.setLoading(true);
+                this.showLoading();
+
+                try {
+                    const response = await fetch(`${this.apiUrl}/books?page=${page}&per_page=20`);
+                    const data = await response.json();
+
+                    if (data.books) {
+                        this.displayBrowseResults(data);
+                    } else {
+                        this.showError(data.error || 'Failed to load books');
+                    }
+                } catch (error) {
+                    this.showError('Network error: Could not connect to server');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            displayResults(data) {
+                const container = document.getElementById('resultsContainer');
+                const resultsCount = document.getElementById('resultsCount');
+                
+                resultsCount.textContent = `${data.total_results} books found`;
+                resultsCount.style.display = 'block';
+
+                if (data.recommendations.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <h3>No books found</h3>
+                            <p>Try adjusting your search query or lowering the minimum similarity threshold</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                console.log(data)
+                const html = data.recommendations.map(item => this.createBookCard(item.book, item.similarity_percent)).join('');
+                container.innerHTML = html;
+            }
+
+            displayBrowseResults(data) {
+                const container = document.getElementById('resultsContainer');
+                const resultsCount = document.getElementById('resultsCount');
+                
+                resultsCount.textContent = `${data.books.length} of ${data.pagination.total} books`;
+                resultsCount.style.display = 'block';
+
+                const html = data.books.map(book => this.createBookCard(book)).join('');
+                container.innerHTML = html;
+
+                // Add pagination if needed
+                if (data.pagination.pages > 1) {
+                    container.innerHTML += this.createPagination(data.pagination);
+                }
+            }
+
+            createBookCard(book, similarity = null) {
+                const similarityHtml = similarity ? 
+                    `<div class="similarity-score">${similarity}% match</div>` : '';
+
+                const metaInfo = [];
+                if (book.isbn) metaInfo.push(`ISBN: ${book.isbn}`);
+                if (book.publication_year) metaInfo.push(`Year: ${book.publication_year}`);
+                if (book.publisher) metaInfo.push(`Publisher: ${book.publisher}`);
+
+                return `
+                    <div class="book-card">
+                        <div class="book-header">
+                            <div>
+                                <div class="book-title">${this.escapeHtml(book.Judul_Buku || 'Unknown Title')}</div>
+                                <div class="book-publisher">${this.escapeHtml(book.Penerbit || 'Unknown Publisher')}</div>
+                                <div class="book-author">${this.escapeHtml(book.Author || 'Unknown Author')}</div>
+                            </div>
+                            ${similarityHtml}
+                        </div>
+                        ${book.description ? `<div class="book-description">${this.escapeHtml(this.truncateText(book.description, 200))}</div>` : ''}
+                        ${metaInfo.length > 0 ? `<div class="book-meta">${metaInfo.join(' • ')}</div>` : ''}
+                    </div>
+                `;
+            }
+
+            createPagination(pagination) {
+                const { page, pages } = pagination;
+                let html = '<div style="text-align: center; margin-top: 20px;">';
+                
+                if (page > 1) {
+                    html += `<button class="btn" onclick="bookUI.browseBooks(${page - 1})">Previous</button> `;
+                }
+                
+                html += `<span style="margin: 0 15px; color: #666;">Page ${page} of ${pages}</span>`;
+                
+                if (page < pages) {
+                    html += ` <button class="btn" onclick="bookUI.browseBooks(${page + 1})">Next</button>`;
+                }
+                
+                html += '</div>';
+                return html;
+            }
+
+            showLoading() {
+                document.getElementById('resultsContainer').innerHTML = `
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>Searching for books...</p>
+                    </div>
+                `;
+                document.getElementById('resultsCount').style.display = 'none';
+            }
+
+            showError(message) {
+                document.getElementById('resultsContainer').innerHTML = `
+                    <div class="error">
+                        <strong>Error:</strong> ${this.escapeHtml(message)}
+                    </div>
+                    <div class="empty-state">
+                        <h3>Something went wrong</h3>
+                        <p>Please try again or check your connection</p>
+                    </div>
+                `;
+                document.getElementById('resultsCount').style.display = 'none';
+            }
+
+            setLoading(loading) {
+                this.isLoading = loading;
+                const searchBtn = document.getElementById('searchBtn');
+                const browseBtn = document.getElementById('browseBtn');
+                
+                if (loading) {
+                    searchBtn.textContent = 'Searching...';
+                    searchBtn.disabled = true;
+                    browseBtn.disabled = true;
+                } else {
+                    searchBtn.textContent = 'Search Books';
+                    searchBtn.disabled = false;
+                    browseBtn.disabled = false;
+                }
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            truncateText(text, maxLength) {
+                if (text.length <= maxLength) return text;
+                return text.substring(0, maxLength) + '...';
+            }
+        }
+
+        // Initialize the application
+        const bookUI = new BookRecommendationUI();
+
+        // Auto-refresh health status every 30 seconds
+        setInterval(() => {
+            bookUI.checkHealth();
+        }, 30000);
+    </script>
+</body>
+</html>
