@@ -4,3 +4,4 @@ scikit-learn=1.6.1
 flask=2.2.5
 flask-cors=5.0.1
 openpyxl=3.0.10
+joblib=1.2.0
