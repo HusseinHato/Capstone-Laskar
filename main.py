@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import pickle
 import json
@@ -110,21 +110,9 @@ class BookRecommendationAPI:
 # Initialize API
 recommender = BookRecommendationAPI()
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def home():
-    """API Info"""
-    return jsonify({
-        "service": "Book Recommendation API",
-        "version": "1.0",
-        "status": "ready" if recommender.is_loaded else "loading",
-        "endpoints": {
-            "/": "API info",
-            "/health": "Health check",
-            "/model-info": "Model information",
-            "/search": "Search recommendations (POST)",
-            "/search/<query>": "Search recommendations (GET)"
-        }
-    })
+   return render_template('index.html')
 
 @app.route('/health')
 def health():
